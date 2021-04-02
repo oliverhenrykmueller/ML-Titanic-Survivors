@@ -10,6 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, LabelBinarizer
 from sklearn.model_selection import GridSearchCV
+import matplotlib.pyplot as plt
 import seaborn as sns
 
 
@@ -33,24 +34,59 @@ def checkEmptyValues(df,column):
 
     return empty,array
 
-def genderbender(df):
+def data_explore(data):
 
-    i = 0
-    for item in df["Sex"]:
-        if item == "male":
-            df.at[i, "Sex"] = 0
-        else:
-            df.at[i, "Sex"] = 1
-        i += 1
 
-    return df
+    #data_male_dead = data[data["Sex"] == "male" & data["Survived"] == 0]
+    data_filtered_age = data.loc[:,["Age","Survived","Sex"]]
 
-def scaling(dataset):
+    data_male = data[data["Sex"] == "male"]
+    data_male_filt = data_male.loc[:,["Age","Survived","Fare","Pclass"]]
+    print(data_male_filt)
+    #data_male = data[data["Sex" == "male"]].loc[:,["Age","Survived","Fare","Pclass"]]
+
+    data_male_age = data_filtered_age[data["Sex"] =="male"]
+    data_female_age = data_filtered_age[data["Sex"] == "female"]
+
+    data_male_dead = data[(data.Sex == "male") & data.Survived == 0]
+    data_male_survived = data[(data.Sex == "male") & (data.Survived == 1)]
+    data_female_dead = data[(data["Sex"] == "female")& (data["Survived"] == 0)]
+#    data_female = data[(data["Sex"] == "female") & (data["S"])]
+
+    print(data_male_dead)
+
+    #sns.kdeplot(x="Age", y="Survived", data=data_male_age)
+
+    # Comparing all male passengers Ages with 2 plots depending if they survived or not
+    #sns.pairplot(data_male_age, hue="Survived",kind="hist")
+    # Same as before but with female passengers
+    #sns.pairplot(data_female_age, hue="Survived",kind="hist")
+
+    sns.pairplot(data_male_filt,hue="Survived",kind="scatter")
+
+    #sns.pairplot()
+
+    #sns.histplot(data_male_age, hue="Survived")
+    #sns.histplot(data_male_survived["Age"])
+
+
+
+    #sns.distplot(data["Age"])
+
+
+    plt.show()
+
+
+
+
+
+
+
+
 
 
 
     return
-
 
 if __name__ == '__main__':
 
@@ -59,25 +95,25 @@ if __name__ == '__main__':
     test = pd.read_csv("/media/Jung/Desktop/Arbeit & Karierre/Data Analytics & CS Projekte/Kaggle Competitions/Titanic/Data/test.csv")
 
     ## SHOW DATA FRAME
-    print "TRAINING DATA"
-    print train.head()
-    print train.describe()
-    print train.info()
+    print ("TRAINING DATA")
+    print (train.head())
+    print (train.describe())
+    print (train.info())
 
-    print "TEST DATA"
-    print test.head()
-    print test.describe()
-    print test.info()
+    print ("TEST DATA")
+    print (test.head())
+    print (test.describe())
+    print (test.info())
 
     ## Exploratory Data Analysis
 
-    print checkEmptyValues(train, "Survived")
-    print checkEmptyValues(train, "Age")
-    print checkEmptyValues(train, "Sex")
-    print checkEmptyValues(train, "Fare")
-    print checkEmptyValues(train, "SibSp")
-    print checkEmptyValues(train, "Parch")
-    print checkEmptyValues(train, "Pclass")
+    print (checkEmptyValues(train, "Survived"))
+    print (checkEmptyValues(train, "Age"))
+    print (checkEmptyValues(train, "Sex"))
+    print (checkEmptyValues(train, "Fare"))
+    print (checkEmptyValues(train, "SibSp"))
+    print (checkEmptyValues(train, "Parch"))
+    print (checkEmptyValues(train, "Pclass"))
 
 
     ## PREPROCESSING
@@ -86,7 +122,7 @@ if __name__ == '__main__':
     ## Drop unwanted columns
     # Save PassengerIDlist of Testset
     test_np_id = test["PassengerId"].to_numpy()
-    print test_np_id
+    print (test_np_id)
 
     train.drop(["PassengerId","Cabin", "Ticket", "Name"], axis=1, inplace=True)
     test.drop(["PassengerId","Cabin", "Ticket", "Name"], axis=1, inplace=True)
@@ -103,8 +139,8 @@ if __name__ == '__main__':
     data_complete = [train, test]
     for dataset in data_complete:
         dataset['Embarked'] = dataset['Embarked'].fillna(embarked)
-    print train.info()
-    print test.info()
+    print (train.info())
+    print (test.info())
 
     # Fare and Age values are missing for Testset
     data_merged = pd.concat([train.drop(["Survived"], axis=1), test], axis=0)
@@ -128,8 +164,8 @@ if __name__ == '__main__':
         dataset["Age"] = age_slice
         dataset["Age"] = train["Age"].astype(int)
 
-    print train.info()
-    print test.info()
+    print (train.info())
+    print (test.info())
 
     # Fare Value
 
@@ -139,8 +175,8 @@ if __name__ == '__main__':
     pclass2_fare_mean = fare_group["Fare"][2]
     pclass3_fare_mean = fare_group["Fare"][3]
 
-    print test
-    print test[test['Fare'].isna()]
+    print (test)
+    print (test[test['Fare'].isna()])
 
     # Fill in mean generated Class for missing values
     for x in test["Pclass"]:
@@ -152,16 +188,18 @@ if __name__ == '__main__':
         else:
             test["Fare"].fillna(pclass3_fare_mean, inplace=True)
 
-    print test.info()
-    print test
-    print test[test['Fare'].isna()]
+    print (test.info())
+    print (test)
+    print (test[test['Fare'].isna()])
 
     ###################################################
 
     # Feature Engineering, create more significant features
     # Transformation of Categorical Data (Pclass = feature1(class1), feature2(Class2) etc.)
 
+    data_explore(train)
 
+    """
     # Feature Vector Processing
     # Scaling of numerical data, Caterogical data stays
 
@@ -217,21 +255,17 @@ if __name__ == '__main__':
     #clf = RandomForestClassifier(n_estimators=100)
     #clf.fit(X, y)
 
-    clf = LogisticRegression()
+    logreg = LogisticRegression()
     scoring = ["r2","explained_variance"]
-    grid = GridSearchCV(clf,parameters,scoring=scoring,refit="r2",cv=5,iid=False)
+    grid = GridSearchCV(logreg, parameters, scoring=scoring, refit="r2", cv=5, iid=False)
 
     grid.fit(X,y)
     print grid
     #clf.fit(X, y)
 
-
-
     ## Prediction of test set
     #predictions = clf.predict(X_test)
     predictions = grid.predict(X_test)
-
-
 
     if len(test_np_id) != len(predictions):
         print "TEST SET AND PREDICTIONS NOT THE SAME LENGTHS"#
@@ -248,3 +282,4 @@ if __name__ == '__main__':
     csv_file = open("predictions.csv", 'ab')
     np.savetxt(csv_file, csv_predictions, delimiter=',', fmt='%d')
     csv_file.close()
+    """
