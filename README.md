@@ -8,8 +8,5 @@
 > Final accuracy is ~78%.
 <hr>
 
-# Table of Contents
-* [oliverhenrykmueller]
-
 # <a name="team-members"></a>Team Members
 * "Oliver.Mueller" 
