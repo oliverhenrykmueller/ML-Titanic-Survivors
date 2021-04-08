@@ -3,24 +3,30 @@ import numpy as np
 import pandas as pd
 from sklearn import svm
 import logging as lg
-from sklearn import preprocessing
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, LabelBinarizer
 from sklearn.model_selection import GridSearchCV
-import re
 import matplotlib.pyplot as plt
-import seaborn as sns;
+import seaborn as sns
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import chi2
+from xgboost import XGBClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold, cross_val_score
+from sklearn.model_selection import StratifiedKFold
 
 sns.set(style="ticks", color_codes=True)
 
 
 def data_explore(data):
-    data.Survived.replace({1: "Alive", 0: "Dead"}, inplace=True)
-    print(data)
+    """
+    Visualization of the titanic data
+    :param data: the data to display
+    :return:
+    """
 
-    # data_male_dead = data[data["Sex"] == "male" & data["Survived"] == 0]
+    data.Survived.replace({1: "Alive", 0: "Dead"}, inplace=True)
+
     data_fare = data.loc[:, ["Fare", "Survived"]][data["Fare"] < 200]
     data_filtered_age = data.loc[:, ["Age", "Survived", "Sex"]]
 
@@ -30,27 +36,12 @@ def data_explore(data):
     data_male_age = data_filtered_age[data_filtered_age["Sex"] == "male"]
     data_female_age = data_filtered_age[data_filtered_age["Sex"] == "female"]
 
+    """
     data.groupby('Sex').mean()
     FacetGrid = sns.FacetGrid(data, row='Embarked', size=4.5, aspect=1.6)
     FacetGrid.map(sns.pointplot, 'Pclass', 'Survived', 'Sex', order=None, hue_order=None)
     FacetGrid.add_legend();
-
     """
-    data_male_filt = data_male.loc[:,["Age","Survived","Fare","Pclass"]]
-    print(data_male_filt)
-    #data_male = data[data["Sex" == "male"]].loc[:,["Age","Survived","Fare","Pclass"]]
-
-    data_male_age = data_filtered_age[data["Sex"] =="male"]
-    data_female_age = data_filtered_age[data["Sex"] == "female"]
-
-    data_male_dead = data[(data.Sex == "male") & data.Survived == 0]
-    data_male_survived = data[(data.Sex == "male") & (data.Survived == 1)]
-    data_female_dead = data[(data["Sex"] == "female")& (data["Survived"] == 0)]
-#    data_female = data[(data["Sex"] == "female") & (data["S"])]
-    """
-    # print(data_male_dead)
-
-    # print(data_female_age)
 
     # sns.kdeplot(x="Age", y="Survived", data=data_male_age)
 
@@ -58,31 +49,6 @@ def data_explore(data):
     # sns.pairplot(data_male_age, hue="Survived",kind="hist")
     # sns.pairplot(data_male_age, hue="Survived", diag_kind="hist", diag_kws={'alpha': 0.5, 'bins': 30})
 
-    # signifacant male death age groups:
-    # 0-5 Highest survival ratio
-    # good survival rate until 16, catastrophic rate there
-    # relaxing at 24-29
-    # getting better at 32-36
-    # worsening ab 37
-    # good ratio at 48-50
-    # then bad
-    # 64-74 terrible
-    # high death rate until 77-80 which survived colmpletly
-
-    # Same as before but with female passengers
-
-    # relative bad surviverate for infants < 2
-    # good rate 2-6
-    # 6-8 bad (half)
-    # most terrible death rate for 8-12
-    # 12 -16 good survival
-    # 16 -20 worsening
-    # good consistent rates for 20-31
-    # very good rates for 31-36(38)
-    # worsening rates until 44
-    # bad rate at 44-48
-    # very good rates until 56
-    # actually until 63
     # sns.jointplot(x="Age", y="Survived", data=data, hue="Sex", kind="hist")
 
     # sns.pairplot(data_female_age, hue="Survived",diag_kind="hist",diag_kws = {'alpha':0.55, 'bins':30})
@@ -97,8 +63,6 @@ def data_explore(data):
 
     sns.pairplot(data_fare, hue="Survived", diag_kind="hist", diag_kws={'alpha': 0.55, 'bins': 30})
 
-    # sns.jointplot(x="")
-
     plt.show()
 
     return
@@ -108,14 +72,16 @@ if __name__ == '__main__':
 
     pd.set_option('display.max_columns', None)
 
-    # Open Titanic Data  #################################################
+    ###############################################################################################
+    # Open Data  ##################################################################################
+    ###############################################################################################
+
     train = pd.read_csv(
         "/media/Jung/Desktop/Arbeit & Karierre/Data Analytics & CS Projekte/Kaggle Competitions/Titanic/Data/train.csv")
     test = pd.read_csv(
         "/media/Jung/Desktop/Arbeit & Karierre/Data Analytics & CS Projekte/Kaggle Competitions/Titanic/Data/test.csv")
 
-
-    # Show information of the data #################################################
+    # Describe data information ###############################
     print("TRAINING DATA")
     print(train.head())
     print(train.describe())
@@ -126,24 +92,22 @@ if __name__ == '__main__':
     print(test.describe())
     print(test.info())
 
-    # Preprocessing #################################################
-    # Merge both test and train data for additional imputation data
+    ###############################################################################################
+    # Preprocessing ###############################################################################
+    ###############################################################################################
+
+    # Merge both test and train data for additional imputation data ##############################
     data_merged = pd.concat([train.drop(["Survived"], axis=1), test], axis=0)
     data_complete = [train, test, data_merged]
 
-    # Save passengerID-list from testdata for later ###
+    # Save passengerID-list from testdata for later ###############################
     test_np_id = test["PassengerId"].to_numpy()
 
-
-
-    # Imputation of missing values ###
-
+    # Imputation of missing values #################################
     # "Embarked" column: Get the most repeated value of Embarked and replace missing rows with it #
     embarked = train['Embarked'].mode()[0]
     for dataset in data_complete:
         dataset['Embarked'] = dataset['Embarked'].fillna(embarked)
-    print(train.info())
-    print(test.info())
 
     # "Age" column: Get mean and standard deviation to compute random values in a range #
     # Mean and standard deviation for age
@@ -163,9 +127,6 @@ if __name__ == '__main__':
         dataset["Age"] = age_slice
         dataset["Age"] = train["Age"].astype(int)
 
-    print(train.info())
-    print(test.info())
-
     # "Fare" column: Get the mean for all Classes (even though only one value is missing) #
     fare_group = data_merged.groupby("Pclass").mean()
     pclass1_fare_mean = fare_group["Fare"][1]
@@ -183,47 +144,44 @@ if __name__ == '__main__':
             else:
                 test["Fare"].fillna(pclass3_fare_mean, inplace=True)
 
-
-    # Exploraty Data Analysis #################################################
+    ###############################################################################################
+    # Exploratory Data Analysis ###################################################################
+    ###############################################################################################
 
     # data_explore(train)
-
     #raise Exception
 
-    # Feature Engineering #################################################
-    # Transformation of Categorical Data ##
+    ###############################################################################################
+    # Feature Engineering #########################################################################
+    ###############################################################################################
 
-    # New Feature: Familysize :
+    # Transformation of Categorical Data ################################
+    # Pclass categorical transformation
+    for dataset in data_complete:
+        dataset.loc[dataset["Pclass"] == 1, "Pclass"] = "1"
+        dataset.loc[dataset["Pclass"] == 2, "Pclass"] = "2"
+        dataset.loc[dataset["Pclass"] == 3, "Pclass"] = "3"
+
+    # Creation of new additional features ##############################
+
+    # New Feature: Familysize #
     # Create new Feature regarding family size, on the idea that families stick together
     # Combine Sibsp and Parch to count the children, parents etc. together
+
     for dataset in data_complete:
+        # Convert sibsp and Parch to float (so its marked as numerical data)
+        dataset["Parch"] = dataset["Parch"].astype(float)
+        dataset["SibSp"] = dataset["SibSp"].astype(float)
         dataset["Familysize"] = dataset["SibSp"] + dataset["Parch"]
         dataset.loc[dataset['Familysize'] > 0, 'travelled_alone'] = 'No'
         dataset.loc[dataset['Familysize'] == 0, 'travelled_alone'] = 'Yes'
 
-    # New Feature: Age ranges
+    # New Feature: Age categorization #
+    # Categorize Age data first with number, since multiple edits are necessary
+    # since you cant compare strings with integers
+
     for dataset in data_complete:
-        ## OLD
-        # dataset.loc[dataset["Age"] <= 2 , "Age_infant"] = True
-        # dataset.loc[(dataset["Age"] > 2) & (dataset["Age"] <= 12), "Age_child"] = True
-        # dataset.loc[(dataset["Age"] > 12 )& (dataset["Age"] <= 18), "Age_teen"] = True
-        # dataset.loc[(dataset["Age"] > 18 )& (dataset["Age"] <= 30), "Age_youngadult"] = True
-        # dataset.loc[(dataset["Age"] > 30 )& (dataset["Age"] <= 50), "Age_adult"] = True
-        # dataset.loc[(dataset["Age"] > 50), "Age_oldadult"] = True
-
-        # dataset["Age_infant"] = dataset["Age"] < 2
-        # dataset["Age_child"] = (dataset["Age"] >= 2) & (dataset["Age"] < 13)
-        # dataset["Age_teen"] = (dataset["Age"] >= 12) & (dataset["Age"] < 18)
-        # dataset["Age_youngadult"] = (dataset["Age"] >= 18 ) & (dataset["Age"] < 30)
-        # dataset["Age_adult"] = (dataset["Age"] >= 30 ) & (dataset["Age"] < 50)
-        # dataset["Age_oldadult"] = dataset["Age"] >= 50
-
-        # dataset.loc[dataset["Age"] < 2 ] = "Infant"
-
-        # Categorize Age data first with number, since multiple edits are neccessary
-        # and pandas cant compare strings with integers
-        dataset["Age_num"] = dataset["Age"]
-
+        #dataset["Age_num"] = dataset["Age"].astype(float)
         dataset.loc[dataset["Age"] < 2, "Age"] = 0
         dataset.loc[(dataset["Age"] >= 2) & (dataset["Age"] < 6), "Age"] = 1
         dataset.loc[(dataset["Age"] >= 6) & (dataset["Age"] < 12), "Age"] = 2
@@ -238,7 +196,9 @@ if __name__ == '__main__':
             {0: 'Infant', 1: 'Small_Child', 2: "Child", 3: "Teen", 4: "Teen_Adult", 5: "Young_Adult", 6: "Adult",
              7: "Middleage_Adult", 8: "Old_adult", 9: "Senior"}, inplace=True)
 
-    # New Feature: Deck Level, depending on the First letter, missing data will be filled with "U" with unknown
+    # New Feature: Deck Level #
+    # On basis of the first letter of the Cabin-column,
+    # missing data will be filled with "U" for unknown
 
     a = train.sort_values("Cabin")["Cabin"]
 
@@ -285,61 +245,35 @@ if __name__ == '__main__':
         dataset['Fare'].replace(
             {0: 'Extremely_low', 1: 'Very_Low', 2: "Low", 3: "Medium", 4: "High", 5: "Very High", 6: "Extremely_high"}, inplace=True)
 
-    print(train.head())
-
-    # New Feature: Title
+    # New Feature: Title #
     # Like Miss, Mr., Mrs and rarer titles like Sir, military ranks, etc.
 
     titles = train.Name.str.extract(r"([A-Za-z]+)\.")
-    titles_higher = ["Dr", "Rev", "Major", "Col", "Mlle", "Mme", "Ms", "Capt", "Lady", "Jonkheer", "Don", "Countess", "Sir"]
+    titles_higher = ["Dr", "Rev", "Major", "Col", "Capt", "Lady", "Jonkheer", "Don", "Countess", "Sir"]
+    titles_miss = ["Ms", "Mlle"]
 
     for dataset in data_complete:
         dataset["Title"] = dataset.Name.str.extract(r"([A-Za-z]+)\.", expand=False)
         dataset["Title"] = dataset.Title.replace(titles_higher, "High_title")
+        dataset["Title"] = dataset.Title.replace(titles_miss, "Miss")
+        dataset["Title"] = dataset.Title.replace("Mme", "Mrs")
 
     print(train.Title.unique())
 
+    ###############################################################################################
+    # Feature Vector Preprocessing ################################################################
+    ###############################################################################################
 
-    # Feature Vector Processing #################################################
-
-    ## Drop all uneccessary columns
     print("Feature Vector Processing")
-    print(train)
 
-
+    # Drop all unnecessary columns ###############################
     for dataset in data_complete:
         dataset.drop(["Cabin","Name","PassengerId", "Ticket"], axis=1,inplace=True)
 
-    # Transformation of categorical data to prepare for One hot encoding ##
-    # Pclass
-    for dataset in data_complete:
-        dataset.loc[dataset["Pclass"] == 1, "Pclass"] = "1"
-        dataset.loc[dataset["Pclass"] == 2, "Pclass"] = "2"
-        dataset.loc[dataset["Pclass"] == 3, "Pclass"] = "3"
-
-    print(train)
-
-    # Feature selection #########
-
-
-    # Scaling numerical data ##
-
-    numerical_features = list(train.drop(["Survived"], axis=1).select_dtypes(include=['int64', 'float64', 'int32']).columns)
-    print(numerical_features)
-
-    ss_scaler = StandardScaler()
-    #ss_scaler = MinMaxScaler()
+    # Data Preparation #################################
+    # Categorical One Hot Encoding
     train_ss = pd.DataFrame(data=train)
     test_ss = pd.DataFrame(data=test)
-
-    ss_scaler.fit(train[numerical_features])
-
-    train_ss[numerical_features] = ss_scaler.transform(train_ss[numerical_features])
-    test_ss[numerical_features] = ss_scaler.transform(test_ss[numerical_features])
-
-    print("DATA SCALED")
-
-    print(train.select_dtypes(include=['object']).columns)
 
     # One hot encoding, Dummy variables for categorical data to use in regression ##
     encode_col_list = list(train.select_dtypes(include=['object']).columns)
@@ -349,27 +283,50 @@ if __name__ == '__main__':
         test_ss = pd.concat([test_ss, pd.get_dummies(test_ss[col], prefix=col)], axis=1)
         train_ss.drop(col, axis=1, inplace=True)
         test_ss.drop(col, axis=1, inplace=True)
-
     # OLD: Turn String features into Numeric Values
     # train['Embarked'] = pd.factorize(train.Embarked)[0]
     # train["Sex"] = pd.factorize(train.Sex)[0]
 
-    print(train_ss)
-    print(test_ss)
+    # Feature selection #
+    # Not used
+    #X = train_ss.drop(["Survived"], axis=1).to_numpy()
+    #y = train_ss["Survived"].to_numpy()
+    #X_test = test_ss.to_numpy()
+    #selector = SelectKBest(chi2, k=10)
+    #X = selector.fit_transform(X, y)
+    #X_test = selector.transform(X_test)
 
-    # Transform Data in Numpy format ##
+    # Scaling numerical data ################################
+
+    numerical_features = list(train.drop(["Survived"], axis=1).select_dtypes(include=['float64']).columns)
+    print(numerical_features)
+
+    # Different scalers
+    ss_scaler = StandardScaler()
+    #ss_scaler = MinMaxScaler()
+
+    ss_scaler.fit(train[numerical_features])
+    train_ss[numerical_features] = ss_scaler.transform(train_ss[numerical_features])
+    test_ss[numerical_features] = ss_scaler.transform(test_ss[numerical_features])
+
+    # Transform Data in Numpy format ################################
     # Scikit learn datasets,train(X) and labels(y)
     X = train_ss.drop(["Survived"], axis=1).to_numpy()
-    y = train["Survived"].to_numpy()
+    y = train_ss["Survived"].to_numpy()
     X_test = test_ss.to_numpy()
+
+    # Train Test set out of Training set
+    # Split data for initial testing before commiting to Kaggle
+    # X, X_test, y, y_test = train_test_split(X, y, test_size=0.2, random_state=33)
+
     print("FINAL TRAINING DATASET")
-    print(X)
-    print(y)
-    print(X_test)
+    print(train_ss)
 
-    ## Predictor Modeling #################################################
+    ###############################################################################################
+    # Predictor Modeling ##########################################################################
+    ###############################################################################################
 
-    # Setting up hyperparameters for Gridsearch
+    # Setting up hyperparameters for Gridsearch ##############################
 
     parameters_reg = {"penalty": ["l2"],
                   "C": [1.0, 2.0, 10.0, 100.0],
@@ -386,26 +343,29 @@ if __name__ == '__main__':
                       "gamma":["scale","auto"]
                       }
 
-    # Fitting the train data
-    clf = RandomForestClassifier(n_estimators=100)
+    #scoring = ["r2", "explained_variance"]
 
+    # Classifier ###############################
+
+    #clf = RandomForestClassifier(n_estimators=100)
+    #clf_linear_svm = svm.LinearSVC()
+    #logreg = LogisticRegression()
     clf_svc = svm.SVC()
-    clf_linear_svm = svm.LinearSVC()
 
-    grid_svm = GridSearchCV(clf_svc,param_grid=parameters_svm)
-    #grid_svm = svm.LinearSVC()
+    # GridSearch ###############################
 
-    logreg = LogisticRegression()
-    scoring = ["r2", "explained_variance"]
+    #grid_svm = XGBClassifier()
     #grid = GridSearchCV(logreg, parameters, scoring=scoring, refit="r2", cv=5)
+    grid_svm = GridSearchCV(clf_svc, param_grid=parameters_svm)
 
-
-
+    # Train the algorithm ###############################
     grid_svm.fit(X, y)
 
-    # Prediction of test set ##
+    # Prediction of test set ###############################
     #predictions = clf.predict(X_test)
     predictions = grid_svm.predict(X_test)
+
+    #print(grid_svm.score(X_test, y_test))
 
     # Check if initial testset(id) and predictions have the same length
     if len(test_np_id) != len(predictions):
@@ -417,14 +377,16 @@ if __name__ == '__main__':
     # Merge predictions and the list with the PassengerIds
     csv_predictions = np.dstack((test_np_id, predictions))[0]
 
+    ###############################################################################################
+    # Save predictions / Output ###################################################################
+    ###############################################################################################
+
     # Save the Predictions as a csv file
     with open("predictions.csv", "w") as predictfile:
         cwriter = csv.writer(predictfile)
         cwriter.writerow(("PassengerId", "Survived"))
         np.savetxt(predictfile, csv_predictions, delimiter=',', fmt='%d')
 
-    #csv_file = open("predictions.csv", 'ab')
-    #csv_file.close()
-
+    print("Best Estimator Parameters")
     print(grid_svm.best_estimator_)
     print(grid_svm.best_params_)
