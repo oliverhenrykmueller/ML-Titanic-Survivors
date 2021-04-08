@@ -1,6 +1,3 @@
-# ML-Titanic-Survivors
-
-
 
 # ML-Titanic-Survivors - The famous dataset and project about the survival rate of the Titanic 
 > This project visualizes, analyzes the data around the titanic dataset. It focuses on the different factors that predict survival
@@ -9,4 +6,4 @@
 <hr>
 
 # <a name="team-members"></a>Team Members
-* "Oliver.Mueller" 
+* Oliver Mueller 
